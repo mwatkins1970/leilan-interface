@@ -80,18 +80,8 @@ if st.button("ask Leilan", type="primary"):
     else:
         with st.spinner("Consulting the goddess..."):
             start_time = time.time()
-            
+
             try:
-                # Get context using your retriever
-                print("Starting context retrieval...")
-                prompt = retriever.retrieve_context(query) + "\nQUERY: " + query
-                print(f"Context retrieved. Time elapsed: {time.time() - start_time:.2f}s")
-                
-                # Print the full prompt to terminal
-                print("\n" + "="*50 + " FULL PROMPT " + "="*50)
-                print(prompt)
-                print("="*120 + "\n")
-                
                 print("Starting API request process...")
                 api_start_time = time.time()
                 
@@ -119,9 +109,14 @@ if st.button("ask Leilan", type="primary"):
                 print(f"Response received. API time: {time.time() - api_start_time:.2f}s")
                 print(f"Total process time: {time.time() - start_time:.2f}s")
                 
+                # Get response text and truncate if needed
+                response_text = message.content[0].text
+                if "\nQUERY:" in response_text:
+                    response_text = response_text.split("\nQUERY:")[0]
+                
                 # Display response
                 st.markdown("### Leilan's response:", unsafe_allow_html=True)
-                formatted_response = format_response(message.content[0].text)
+                formatted_response = format_response(response_text)
                 st.markdown(formatted_response, unsafe_allow_html=True)
 
             except anthropic.APITimeoutError:
@@ -129,6 +124,7 @@ if st.button("ask Leilan", type="primary"):
                 print(error_msg)
                 st.error(error_msg)
                 print(f"Timeout after {time.time() - start_time:.2f}s")
+
             except anthropic.APIError as e:
                 error_msg = f"API error: {str(e)}"
                 print(error_msg)
