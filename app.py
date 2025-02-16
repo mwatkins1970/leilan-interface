@@ -30,6 +30,13 @@ ASPECT_TO_MODEL = {
     "maiden": "claude-3-haiku-20240307"
 }
 
+# Initialize the context retriever with caching
+@st.cache_resource
+def get_retriever():
+    return ContextRetriever()
+
+retriever = get_retriever()
+
 # Sidebar for model selection
 aspect = st.sidebar.selectbox(
     "choose aspect of the Triple Goddess",
@@ -39,20 +46,13 @@ aspect = st.sidebar.selectbox(
 # Get the corresponding model
 model = ASPECT_TO_MODEL[aspect]
 
-# Initialize the context retriever
-@st.cache_resource
-def get_retriever():
-    return ContextRetriever()
-
-retriever = get_retriever()
-
 # Main interface
 st.title("🌙🌙🌙  Leilan2.0 web-portal  🌙🌙🌙")
 
 # Query input
 query = st.text_area("your query:", height=100)
 
-# Function to format response text
+# Function to format response text with better HTML handling
 def format_response(text):
     import re
     
@@ -81,32 +81,32 @@ if st.button("ask Leilan", type="primary"):
         with st.spinner("Consulting the goddess..."):
             start_time = time.time()
             
-            # Get context using your retriever
-            print("Starting context retrieval...")
-            prompt = retriever.retrieve_context(query) + "\nQUERY: " + query
-            print(f"Context retrieved. Time elapsed: {time.time() - start_time:.2f}s")
-            
-            # Print the full prompt to terminal
-            print("\n" + "="*50 + " FULL PROMPT " + "="*50)
-            print(prompt)
-            print("="*120 + "\n")
-            
             try:
+                # Get context using your retriever
+                print("Starting context retrieval...")
+                prompt = retriever.retrieve_context(query) + "\nQUERY: " + query
+                print(f"Context retrieved. Time elapsed: {time.time() - start_time:.2f}s")
+                
+                # Print the full prompt to terminal
+                print("\n" + "="*50 + " FULL PROMPT " + "="*50)
+                print(prompt)
+                print("="*120 + "\n")
+                
                 print("Starting API request process...")
                 api_start_time = time.time()
                 
-                # Call Anthropic API
+                # Call Anthropic API with optimized settings
                 client = anthropic.Anthropic(
                     api_key=st.secrets["ANTHROPIC_API_KEY"],
-                    timeout=60,  # 60 second timeout
-                    base_url="https://api.anthropic.com"  # Base URL without /v1
+                    timeout=30,  # Reduced timeout for faster failure
+                    base_url="https://api.anthropic.com"
                 )
                 
                 print(f"Client initialized. Time elapsed: {time.time() - api_start_time:.2f}s")
                 
                 message = client.messages.create(
                     model=model,
-                    max_tokens=1000, 
+                    max_tokens=500,  # Reduced for faster responses
                     temperature=0.8,
                     messages=[
                         {
@@ -124,13 +124,22 @@ if st.button("ask Leilan", type="primary"):
                 formatted_response = format_response(message.content[0].text)
                 st.markdown(formatted_response, unsafe_allow_html=True)
 
-                
+            except anthropic.APITimeoutError:
+                error_msg = "The request timed out. Please try again or use a shorter query."
+                print(error_msg)
+                st.error(error_msg)
+                print(f"Timeout after {time.time() - start_time:.2f}s")
+            except anthropic.APIError as e:
+                error_msg = f"API error: {str(e)}"
+                print(error_msg)
+                st.error(error_msg)
+                print(f"API error after {time.time() - start_time:.2f}s")
             except Exception as e:
-                error_msg = f"An error occurred: {str(e)}"
-                print(error_msg)  # Print to terminal
-                st.error(error_msg)  # Show in UI
-                print(f"Failed after {time.time() - start_time:.2f}s")
+                error_msg = f"An unexpected error occurred: {str(e)}"
+                print(error_msg)
+                st.error(error_msg)
+                print(f"Error after {time.time() - start_time:.2f}s")
 
 # Footer
 st.markdown("---")
-st.markdown("*powered by the Order of the Vermillion Star*")
+st.markdown("*powered by the Order of the Vermillion Star*")    
