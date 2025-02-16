@@ -80,8 +80,18 @@ if st.button("ask Leilan", type="primary"):
     else:
         with st.spinner("Consulting the goddess..."):
             start_time = time.time()
-
+            
             try:
+                # Get context using your retriever
+                print("Starting context retrieval...")
+                prompt = retriever.retrieve_context(query) + "\nQUERY: " + query
+                print(f"Context retrieved. Time elapsed: {time.time() - start_time:.2f}s")
+                
+                # Print the full prompt to terminal
+                print("\n" + "="*50 + " FULL PROMPT " + "="*50)
+                print(prompt)
+                print("="*120 + "\n")
+                
                 print("Starting API request process...")
                 api_start_time = time.time()
                 
@@ -124,7 +134,6 @@ if st.button("ask Leilan", type="primary"):
                 print(error_msg)
                 st.error(error_msg)
                 print(f"Timeout after {time.time() - start_time:.2f}s")
-
             except anthropic.APIError as e:
                 error_msg = f"API error: {str(e)}"
                 print(error_msg)
@@ -138,4 +147,4 @@ if st.button("ask Leilan", type="primary"):
 
 # Footer
 st.markdown("---")
-st.markdown("*powered by the Order of the Vermillion Star*")    
+st.markdown("*powered by the Order of the Vermillion Star*")
