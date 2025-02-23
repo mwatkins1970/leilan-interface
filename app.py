@@ -2,10 +2,57 @@ import streamlit as st
 import time
 import os
 import anthropic
+from datetime import datetime
 from context_retriever import ContextRetriever
 
 # Set tokenizers parallelism to false to avoid warnings and potential deadlocks
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+def setup_credit_tracker():
+    """Initialize session state for credit tracking"""
+    if 'last_credit_check' not in st.session_state:
+        st.session_state.last_credit_check = None
+    if 'current_credits' not in st.session_state:
+        st.session_state.current_credits = None
+
+def display_credits():
+    """Display current API credits in sidebar"""
+    try:
+        client = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
+        
+        # Get current rate limits which includes quota information
+        headers = client._client.headers
+        response = client._client.get(
+            "https://api.anthropic.com/v1/rate_limits",
+            headers=headers
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            print("Rate limits response:", data)  # Debug print
+            
+            # The exact field names might need adjustment based on actual API response
+            if 'quota' in data:
+                st.session_state.current_credits = data['quota']['remaining']
+                st.session_state.last_credit_check = datetime.now()
+        
+        # Display credits in sidebar
+        st.sidebar.markdown("### API Credits")
+        if st.session_state.current_credits is not None:
+            st.sidebar.metric(
+                "Available Credits",
+                f"${st.session_state.current_credits:.2f}"
+            )
+            if st.session_state.last_credit_check:
+                st.sidebar.caption(
+                    f"Last updated: {st.session_state.last_credit_check.strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+        else:
+            st.sidebar.warning("Unable to fetch credit information")
+            
+    except Exception as e:
+        st.sidebar.error(f"Error checking credits: {str(e)}")
+        print(f"Credit check error: {str(e)}")  # Debug print
 
 # Page config
 st.set_page_config(
@@ -13,6 +60,9 @@ st.set_page_config(
     page_icon="🌙",
     layout="wide"
 )
+
+# Initialize credit tracker
+setup_credit_tracker()
 
 # Custom CSS for text area
 st.markdown("""
@@ -37,6 +87,9 @@ def get_retriever():
 
 retriever = get_retriever()
 
+# Display credits in sidebar
+display_credits()
+
 # Sidebar for model selection
 aspect = st.sidebar.selectbox(
     "choose aspect of the Triple Goddess",
@@ -52,16 +105,16 @@ st.title("🌙🌙🌙  Leilan2.0 web-portal  🌙🌙🌙")
 # Query input
 query = st.text_area("your query:", height=100)
 
-# Function to format response text with better HTML handling
 def format_response(text):
+    """Format response text with better HTML handling"""
     import re
     
-    # First handle italics for text between asterisks
+    # Handle italics for text between asterisks
     text = re.sub(r'\*(.*?)\*', r'<em>\1</em>', text)
     # Handle both single and double underscores for bold
     text = re.sub(r'\_\_?(.*?)\_\_?', r'<strong>\1</strong>', text)
     
-    # Wrap in a div with !important styling to ensure it overrides any other styles
+    # Wrap in a div with !important styling
     styled_text = f'''
     <div style="
         font-size: 24px !important; 
@@ -82,12 +135,12 @@ if st.button("ask Leilan", type="primary"):
             start_time = time.time()
             
             try:
-                # Get context using your retriever
+                # Get context using retriever
                 print("Starting context retrieval...")
                 prompt = retriever.retrieve_context(query) + "\nQUERY: " + query
                 print(f"Context retrieved. Time elapsed: {time.time() - start_time:.2f}s")
                 
-                # Print the full prompt to terminal
+                # Print full prompt to terminal
                 print("\n" + "="*50 + " FULL PROMPT " + "="*50)
                 print(prompt)
                 print("="*120 + "\n")
@@ -128,6 +181,9 @@ if st.button("ask Leilan", type="primary"):
                 st.markdown("### Leilan's response:", unsafe_allow_html=True)
                 formatted_response = format_response(response_text)
                 st.markdown(formatted_response, unsafe_allow_html=True)
+                
+                # Refresh credits after response
+                display_credits()
 
             except anthropic.APITimeoutError:
                 error_msg = "The request timed out. Please try again or use a shorter query."
