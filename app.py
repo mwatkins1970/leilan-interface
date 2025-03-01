@@ -106,7 +106,7 @@ if st.button("ask Leilan", type="primary"):
                 
                 message = client.messages.create(
                     model=model,
-                    max_tokens=500,  # Reduced for faster responses
+                    max_tokens=1000,  # Reduced for faster responses
                     temperature=0.8,
                     messages=[
                         {
@@ -147,4 +147,4 @@ if st.button("ask Leilan", type="primary"):
 
 # Footer
 st.markdown("---")
-st.markdown("*powered by the Order of the Vermillion Star*")
+st.markdown("*powered by the Order of the Vermillion Star*")                                
