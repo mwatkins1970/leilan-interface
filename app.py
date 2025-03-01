@@ -21,8 +21,27 @@ st.markdown("""
             font-size: 24px !important;
         }
         .disabled-option {
-            color: #888888 !important;
-            cursor: not-allowed !important;
+            color: #888888;
+            pointer-events: none;
+        }
+        .sidebar-section {
+            margin-bottom: 20px;
+        }
+        .option-container {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .active-option {
+            background-color: #f0f2f6;
+            border: 1px solid #6c7a89;
+            cursor: pointer;
+        }
+        .inactive-option {
+            color: #888888;
+            background-color: #f9f9f9;
+            border: 1px solid #dddddd;
+            font-style: italic;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -35,11 +54,6 @@ ASPECT_TO_MODEL = {
     # "crone": "claude-3-sonnet-20240229",
 }
 
-# Display options with the "coming soon" indicators
-aspect_options = ["maiden", "mother (coming soon)", "crone (coming soon)"]
-# But only allow selection of the active option
-active_options = ["maiden"]
-
 # Initialize the context retriever with caching
 @st.cache_resource
 def get_retriever():
@@ -47,23 +61,43 @@ def get_retriever():
 
 retriever = get_retriever()
 
-# Custom sidebar selection with disabled options
+# Custom sidebar for aspect selection
 st.sidebar.markdown("### Choose aspect of the Triple Goddess")
 
-# Use radio buttons instead of selectbox for more control
-aspect_choice = st.sidebar.radio(
-    label="",
-    options=aspect_options,
-    index=0,  # Default to maiden
-    label_visibility="collapsed"
+# Create a container for the aspect selection
+aspect_container = st.sidebar.container()
+
+# Only maiden is active for now
+aspect = "maiden"
+
+# Display the active option
+active_clicked = aspect_container.button(
+    "maiden",
+    key="maiden_button",
+    use_container_width=True
 )
 
-# Force selection to maiden if user somehow selects a disabled option
-if "coming soon" in aspect_choice:
-    st.sidebar.warning("Only 'maiden' is currently available.")
-    aspect = "maiden"
-else:
-    aspect = aspect_choice
+# Display disabled options with custom styling
+aspect_container.markdown(
+    """
+    <div class="option-container inactive-option">
+        mother (coming soon)
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
+
+aspect_container.markdown(
+    """
+    <div class="option-container inactive-option">
+        crone (coming soon)
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
+
+# Display which aspect is currently selected
+st.sidebar.info(f"Currently using: {aspect}")
 
 # Get the corresponding model
 model = ASPECT_TO_MODEL[aspect]
