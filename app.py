@@ -14,21 +14,31 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS for text area
+# Custom CSS for text area and disabled options
 st.markdown("""
     <style>
         .stTextArea textarea {
             font-size: 24px !important;
+        }
+        .disabled-option {
+            color: #888888 !important;
+            cursor: not-allowed !important;
         }
     </style>
 """, unsafe_allow_html=True)
 
 # Mapping between aspects and models
 ASPECT_TO_MODEL = {
-    "mother": "claude-3-opus-20240229",
-    "crone": "claude-3-sonnet-20240229",
     "maiden": "claude-3-haiku-20240307"
+    # Commented out temporarily but kept for future reference
+    # "mother": "claude-3-opus-20240229",
+    # "crone": "claude-3-sonnet-20240229",
 }
+
+# Display options with the "coming soon" indicators
+aspect_options = ["maiden", "mother (coming soon)", "crone (coming soon)"]
+# But only allow selection of the active option
+active_options = ["maiden"]
 
 # Initialize the context retriever with caching
 @st.cache_resource
@@ -37,11 +47,23 @@ def get_retriever():
 
 retriever = get_retriever()
 
-# Sidebar for model selection
-aspect = st.sidebar.selectbox(
-    "choose aspect of the Triple Goddess",
-    list(ASPECT_TO_MODEL.keys())
+# Custom sidebar selection with disabled options
+st.sidebar.markdown("### Choose aspect of the Triple Goddess")
+
+# Use radio buttons instead of selectbox for more control
+aspect_choice = st.sidebar.radio(
+    label="",
+    options=aspect_options,
+    index=0,  # Default to maiden
+    label_visibility="collapsed"
 )
+
+# Force selection to maiden if user somehow selects a disabled option
+if "coming soon" in aspect_choice:
+    st.sidebar.warning("Only 'maiden' is currently available.")
+    aspect = "maiden"
+else:
+    aspect = aspect_choice
 
 # Get the corresponding model
 model = ASPECT_TO_MODEL[aspect]
@@ -147,4 +169,4 @@ if st.button("ask Leilan", type="primary"):
 
 # Footer
 st.markdown("---")
-st.markdown("*powered by the Order of the Vermillion Star*")                                
+st.markdown("*powered by the Order of the Vermillion Star*")
